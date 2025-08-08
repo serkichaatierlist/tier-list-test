@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <title>Serkichaa's Tier List</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f2f2f2; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 30px; }
+    nav { text-align: center; margin-bottom: 30px; }
+    nav button { background-color: #4CAF50; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+    nav button:hover { background-color: #45a049; }
+    #admin-btn { background-color: #f44336; }
+    .tier-section { background-color: white; border: 1px solid #ccc; padding: 20px; margin-bottom: 40px; border-radius: 10px; }
+    .tier-section h2 { margin-top: 0; }
+    .tier { margin-bottom: 10px; padding: 10px; background-color: #f9f9f9; border-radius: 6px; border: 1px solid #ddd; }
+    .tier h3 { margin: 0; font-weight: bold; }
+    .editable { padding: 5px; border: 1px dashed #aaa; border-radius: 4px; background-color: #fff; min-height: 20px; cursor: text; }
+    .editable:focus { outline: 2px solid #4CAF50; }
+    .locked { pointer-events: none; background-color: #e0e0e0; color: #555; cursor: default; }
+    #save-btn { display: none; margin-top: 10px; background-color: #2196F3; }
+  </style>
+</head>
+<body>
+  <h1>Serkichaa's Tier List</h1>
+
+  <nav>
+    <a href="?section=CPVP"><button>CPVP</button></a>
+    <a href="?section=ELYTRA"><button>ELYTRA</button></a>
+    <a href="?section=SWORD"><button>SWORD</button></a>
+    <a href="?section=AXE"><button>AXE</button></a>
+    <a href="?section=NETHPOT"><button>NETHPOT</button></a>
+    <a href="?section=MACE"><button>MACE</button></a>
+    <a href="?section=DIASMP"><button>DIASMP</button></a>
+    <button id="admin-btn">🔒 Вход за админ</button>
+    <button id="save-btn">💾 Запази промените</button>
+  </nav>
+
+  <div id="content-container">Зареждане...</div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAgqpxIdW-g9rfTCmD-j6o89qGaZvvKX_0",
+      authDomain: "serko-tiers.firebaseapp.com",
+      projectId: "serko-tiers",
+      storageBucket: "serko-tiers.firebasestorage.app",
+      messagingSenderId: "876768001535",
+      appId: "1:876768001535:web:e0037f9297235e99fe7bca",
+      measurementId: "G-V2W62584EB"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let isAdmin = false;
+
+    function getSectionFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("section");
+    }
+
+    function createTiersHTML(title, data) {
+      let html = `<div id="${title.toLowerCase()}" class="tier-section">`;
+      html += `<h2>${title}</h2>`;
+      for (let i = 1; i <= 5; i++) {
+        const htKey = `HT${i}`;
+        const ltKey = `LT${i}`;
+        const htText = data?.[htKey] || "няма";
+        const ltText = data?.[ltKey] || "няма";
+
+        html += `
+          <div class="tier">
+            <h3>HT${i}</h3>
+            <p class="editable locked" contenteditable="false" data-section="${title}" data-key="${htKey}">${htText}</p>
+          </div>
+          <div class="tier">
+            <h3>LT${i}</h3>
+            <p class="editable locked" contenteditable="false" data-section="${title}" data-key="${ltKey}">${ltText}</p>
+          </div>
+        `;
+      }
+      html += `</div>`;
+      return html;
+    }
+
+    async function loadSection(section) {
+      const container = document.getElementById('content-container');
+      if (!section) {
+        container.innerHTML = `<p>Моля, изберете секция отгоре.</p>`;
+        return;
+      }
+      container.innerHTML = 'Зареждане...';
+      try {
+        const doc = await db.collection('tiers').doc(section).get();
+        container.innerHTML = createTiersHTML(section, doc.exists ? doc.data() : null);
+        if (isAdmin) enableEditing(true);
+      } catch (error) {
+        container.innerHTML = 'Грешка при зареждане на данните.';
+        console.error(error);
+      }
+    }
+
+    function enableEditing(enable) {
+      const editables = document.querySelectorAll(".editable");
+      editables.forEach(el => {
+        el.contentEditable = enable;
+        if (enable) {
+          el.classList.remove("locked");
+        } else {
+          el.classList.add("locked");
+        }
+      });
+      document.getElementById('save-btn').style.display = enable ? 'inline-block' : 'none';
+    }
+
+    function enableAdmin() {
+      const pass = prompt("Въведи админ парола:");
+      if (pass === "testerlogin9937") {
+        alert("✅ Админ достъп разрешен.");
+        isAdmin = true;
+        enableEditing(true);
+      } else {
+        alert("❌ Грешна парола.");
+      }
+    }
+
+    async function saveData() {
+      const editables = document.querySelectorAll(".editable");
+      let dataBySection = {};
+      editables.forEach(el => {
+        const section = el.getAttribute("data-section");
+        const key = el.getAttribute("data-key");
+        if (!dataBySection[section]) dataBySection[section] = {};
+        dataBySection[section][key] = el.textContent.trim() || "няма";
+      });
+
+      try {
+        const savePromises = [];
+        for (const section in dataBySection) {
+          savePromises.push(db.collection('tiers').doc(section).set(dataBySection[section]));
+        }
+        await Promise.all(savePromises);
+        alert("✅ Промените са записани.");
+        enableEditing(false);
+        isAdmin = false;
+        loadSection(getSectionFromURL());
+      } catch (error) {
+        alert("❌ Грешка при запис.");
+        console.error(error);
+      }
+    }
+
+    document.getElementById('admin-btn').addEventListener('click', enableAdmin);
+    document.getElementById('save-btn').addEventListener('click', saveData);
+
+    loadSection(getSectionFromURL());
+  </script>
+</body>
+</html>
