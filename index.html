@@ -89,7 +89,7 @@
     async function loadSection(section) {
       const container = document.getElementById('content-container');
       if (!section) {
-        container.innerHTML = `<p>Моля, изберете секция отгоре.</p>`;
+        container.innerHTML = `<p>Изберете на кой gamemod искате да видите tierite.</p>`;
         return;
       }
       container.innerHTML = 'Зареждане...';
@@ -159,4 +159,5 @@
     loadSection(getSectionFromURL());
   </script>
 </body>
+
 </html>
