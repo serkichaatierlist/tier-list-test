@@ -31,6 +31,7 @@
     <a href="?section=NETHPOT"><button>NETHPOT</button></a>
     <a href="?section=MACE"><button>MACE</button></a>
     <a href="?section=DIASMP"><button>DIASMP</button></a>
+    <a href="?section=TESTERS"><button>TESTERS</button></a> <!-- Нов бутон -->
     <button id="admin-btn">🔒 Вход за админ</button>
     <button id="save-btn">💾 Запази промените</button>
   </nav>
@@ -65,23 +66,40 @@
     function createTiersHTML(title, data) {
       let html = `<div id="${title.toLowerCase()}" class="tier-section">`;
       html += `<h2>${title}</h2>`;
-      for (let i = 1; i <= 5; i++) {
-        const htKey = `HT${i}`;
-        const ltKey = `LT${i}`;
-        const htText = data?.[htKey] || "няма";
-        const ltText = data?.[ltKey] || "няма";
 
-        html += `
-          <div class="tier">
-            <h3>HT${i}</h3>
-            <p class="editable locked" contenteditable="false" data-section="${title}" data-key="${htKey}">${htText}</p>
-          </div>
-          <div class="tier">
-            <h3>LT${i}</h3>
-            <p class="editable locked" contenteditable="false" data-section="${title}" data-key="${ltKey}">${ltText}</p>
-          </div>
-        `;
+      if (title === "TESTERS") {
+        // За TESTERS показваме всички gamemodes
+        const gamemodes = ["CPVP", "ELYTRA", "SWORD", "AXE", "NETHPOT", "MACE", "DIASMP"];
+        gamemodes.forEach(mode => {
+          const value = data?.[mode] || "няма";
+          html += `
+            <div class="tier">
+              <h3>${mode}</h3>
+              <p class="editable locked" contenteditable="false" data-section="${title}" data-key="${mode}">${value}</p>
+            </div>
+          `;
+        });
+      } else {
+        // Оригиналните HT/LT полета
+        for (let i = 1; i <= 5; i++) {
+          const htKey = `HT${i}`;
+          const ltKey = `LT${i}`;
+          const htText = data?.[htKey] || "няма";
+          const ltText = data?.[ltKey] || "няма";
+
+          html += `
+            <div class="tier">
+              <h3>HT${i}</h3>
+              <p class="editable locked" contenteditable="false" data-section="${title}" data-key="${htKey}">${htText}</p>
+            </div>
+            <div class="tier">
+              <h3>LT${i}</h3>
+              <p class="editable locked" contenteditable="false" data-section="${title}" data-key="${ltKey}">${ltText}</p>
+            </div>
+          `;
+        }
       }
+
       html += `</div>`;
       return html;
     }
@@ -96,7 +114,13 @@
       try {
         const doc = await db.collection('tiers').doc(section).get();
         container.innerHTML = createTiersHTML(section, doc.exists ? doc.data() : null);
-        if (isAdmin) enableEditing(true);
+
+        // Ако е TESTERS и не е админ → заключено
+        if (section === "TESTERS" && !isAdmin) {
+          enableEditing(false);
+        } else if (isAdmin) {
+          enableEditing(true);
+        }
       } catch (error) {
         container.innerHTML = 'Грешка при зареждане на данните.';
         console.error(error);
@@ -159,6 +183,4 @@
     loadSection(getSectionFromURL());
   </script>
 </body>
-
 </html>
-
